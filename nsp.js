@@ -1,31 +1,17 @@
-// Requires the node-fastcgi module (https://www.npmjs.com/package/node-fastcgi)
-var port = 9000; // FastCGI port number
-var scriptRoot = '../html'; // Relative or absolute path, no trailing slash
-var printErrors = true; // Print errors on the page
-var printErrorsToConsole = false; // Print errors in the console
-var scriptTimeout = 30000; // Ends script with an error after this time. Set to -1 to disable. setTimeout can escape this, though: https://github.com/nodejs/node/issues/3020
-var printPartial = true; // Not yet implemented (always true). If an error occurs, print all html up to that error. This might make errors harder to see so it's better to leave this off.
-var openTags = ['<?nsp', '<?']; // <?nsp needs to go first since nsp starts with <?
-var closeTags = ['?>'];
-var autoCloseLastTag = false; // Allow a file to end while inside a script
-var ignoredOpenTokens = ['"', "'", '`', '//', '/*']; // Ignore tags that occur within comments and strings inside scripts
-var ignoredCloseTokens = [['"', '\n'], ["'", '\n'], ['`'], ['\n'], ['*/']]; // Closing tokens for those comments and strings
-var scriptEncoding = 'utf-8'; // The whole file will have to be of this encoding.
-var precompileScripts = false; // Not yet implemented. This option will make the server keep a mapping between the script's hash and a precompiled script
-var ctrlCScripts = true; // Use Ctrl-C to end the first script that started rather than ending the server
-var debug = true; // Print time taken to run a script to the console
-
+// Requires the node-fastcgi and strip-json-comments modules
 var fcgi = require('node-fastcgi');
 var fs = require('fs');
 var vm = require('vm');
+var sjc = require('strip-json-comments');
 
+var config = JSON.parse(sjc(fs.readFileSync('config.json', 'utf-8')));
 
 fcgi.createServer(function(req, res) {
   var startTime = new Date().getTime();
-  var scriptPath = scriptRoot + req.url;
+  var scriptPath = config.scriptRoot + req.url;
   var result = "";
-  function error(msg) { if(printErrors) { res.end(msg); } else { res.end(); } if(printErrorsToConsole) { console.error(msg) } };
-  fs.readFile(scriptPath, scriptEncoding, (err, data) => {
+  function error(msg) { if(config.printErrors) { res.end(msg); } else { res.end(); } if(config.printErrorsToConsole) { console.error(msg) } };
+  fs.readFile(scriptPath, config.scriptEncoding, (err, data) => {
     if (err) {
       error("An error occured while reading file " + scriptPath + ": " + err.message);
       return;
@@ -37,13 +23,13 @@ fcgi.createServer(function(req, res) {
     vm.createContext(context);
     function evaluate(code, offset) {
       try {
-        var timeLeft = scriptTimeout - (new Date().getTime() - startTime);
-        if(scriptTimeout == -1) {
-          vm.runInContext(code, context, {filename: req.url, breakOnSigint: ctrlCScripts, lineOffset: offset});
+        var timeLeft = config.scriptTimeout - (new Date().getTime() - startTime);
+        if(config.scriptTimeout == -1) {
+          vm.runInContext(code, context, {filename: req.url, breakOnSigint: config.ctrlCScripts, lineOffset: offset});
         } else if (timeLeft > 0) {
-          vm.runInContext(code, context, {filename: req.url, breakOnSigint: ctrlCScripts, lineOffset: offset, timeout: timeLeft});
+          vm.runInContext(code, context, {filename: req.url, breakOnSigint: config.ctrlCScripts, lineOffset: offset, timeout: timeLeft});
         }
-        timeLeft = scriptTimeout - (new Date().getTime() - startTime);
+        timeLeft = config.scriptTimeout - (new Date().getTime() - startTime);
       } catch (err) {
         if (timeLeft <= 0) {
           error('Script timeout reached');
@@ -75,20 +61,20 @@ fcgi.createServer(function(req, res) {
           lineNumber++;
       }
       if (!inScript) { // outside of a script
-        if (ti = isStr(data, pos, openTags)) {
+        if (ti = isStr(data, pos, config.openTags)) {
           res.write(data.slice(fromPos, pos));
-          pos += openTags[ti - 1].length; // skip over the tag
+          pos += config.openTags[ti - 1].length; // skip over the tag
           fromPos = pos;
           fromLine = lineNumber;
           inScript = true;
-        } else if (ti = isStr(data, pos, closeTags)) {
+        } else if (ti = isStr(data, pos, config.closeTags)) {
           error("Unmatched close tag on line " + lineNumber);
           return;
         }
       } else if (inScript && !inIgnored) { // inside a script
-        if (ti = isStr(data, pos, closeTags) || (autoCloseLastTag && pos == str.length)) {
+        if (ti = isStr(data, pos, config.closeTags) || (config.autoCloseLastTag && pos == str.length)) {
           code = data.slice(fromPos, pos);
-          pos += closeTags[ti - 1].length;
+          pos += config.closeTags[ti - 1].length;
           fromPos = pos;
           inScript = false;
           inIgnored = false;
@@ -97,16 +83,15 @@ fcgi.createServer(function(req, res) {
           // evaluate the script
           evaluate(code, lineNumber - 1);
           if (res.finished) {
-            if (debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
+            if (config.debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
             return;
           }
-        } else if (isStr(data, pos, openTags)) {
+        } else if (isStr(data, pos, config.openTags)) {
           error("Unmatched open tag on line " + fromLine + " (tried to open another on line " + lineNumber + ")");
           return;
-        } else if (ti = isStr(data, pos, ignoredOpenTokens)) {
+        } else if (ti = isStr(data, pos, config.ignoredOpenTokens)) {
           inIgnored = true;
-          ignoreCloseToken = ignoredCloseTokens[ti - 1];
-          console.log(ignoreCloseToken);
+          ignoreCloseToken = config.ignoredCloseTokens[ti - 1];
         }
       } else if (inScript && inIgnored && isStr(data, pos, ignoreCloseToken)) {
         inIgnored = false;
@@ -124,6 +109,6 @@ fcgi.createServer(function(req, res) {
     if(!res.finished) {
       res.end();
     }
-    if (debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
+    if (config.debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
   });
-}).listen(port);
+}).listen(config.port);
