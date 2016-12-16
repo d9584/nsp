@@ -1,14 +1,15 @@
 // Requires the node-fastcgi and strip-json-comments modules
-var fcgi = require('node-fastcgi');
-var fs = require('fs');
-var vm = require('vm');
-var sjc = require('strip-json-comments');
+var fcgi = require("node-fastcgi");
+var fs = require("fs");
+var vm = require("vm");
+var sjc = require("strip-json-comments");
 
-var config = JSON.parse(sjc(fs.readFileSync('config.json', 'utf-8')));
+var config = JSON.parse(sjc(fs.readFileSync("config.json", "utf-8")));
 
 fcgi.createServer(function(req, res) {
   var startTime = new Date().getTime();
-  var scriptPath = config.scriptRoot + req.url;
+  var scriptName = req.url.split("?")[0];
+  var scriptPath = config.scriptRoot + scriptName;
   var result = "";
   var errorOccured = false;
   
@@ -19,7 +20,7 @@ fcgi.createServer(function(req, res) {
     errorOccured = true;
     if(config.printErrors) {
       if(config.htmlErrors) {
-        msg = '<pre class="nsp-error">' + msg + '</pre>';
+        msg = "<pre class=\"nsp-error\">" + msg + "</pre>";
       }
       if (config.printRemainingOnError && canContinue) {
         res.write(msg);
@@ -37,22 +38,22 @@ fcgi.createServer(function(req, res) {
       return;
     }
     
-    var context = {'clearImmediate': clearImmediate, 'clearInterval': clearInterval, 'clearTimeout': clearTimeout,
-    'require': require, 'setImmediate': setImmediate, 'setInterval': setInterval, 'setTimeout': setTimeout,
-    'req': req, 'res': res, 'console': console}; // TODO: globals
+    var context = {"clearImmediate": clearImmediate, "clearInterval": clearInterval, "clearTimeout": clearTimeout,
+    "require": require, "setImmediate": setImmediate, "setInterval": setInterval, "setTimeout": setTimeout,
+    "req": req, "res": res, "console": console}; // TODO: globals
     vm.createContext(context);
     function evaluate(code, offset) {
       try {
         var timeLeft = config.scriptTimeout - (new Date().getTime() - startTime);
         if(config.scriptTimeout == -1) {
-          vm.runInContext(code, context, {filename: req.url, breakOnSigint: config.ctrlCScripts, lineOffset: offset});
+          vm.runInContext(code, context, {filename: scriptName, breakOnSigint: config.ctrlCScripts, lineOffset: offset});
         } else if (timeLeft > 0) {
-          vm.runInContext(code, context, {filename: req.url, breakOnSigint: config.ctrlCScripts, lineOffset: offset, timeout: timeLeft});
+          vm.runInContext(code, context, {filename: scriptName, breakOnSigint: config.ctrlCScripts, lineOffset: offset, timeout: timeLeft});
         }
         timeLeft = config.scriptTimeout - (new Date().getTime() - startTime);
       } catch (err) {
         if (timeLeft <= 0) {
-          error('Script timeout reached', false);
+          error("Script timeout reached", false);
         } else {
           error(err.stack.split("at realRunInContextScript")[0], true);
         }
@@ -77,7 +78,7 @@ fcgi.createServer(function(req, res) {
     var fromLine = 0;
     var ti = 0;
     for (var pos = 0; pos <= data.length; pos++) {
-      if (data.charAt(pos) == '\n') {
+      if (data.charAt(pos) == "\n") {
           lineNumber++;
       }
       if (!inScript) { // outside of a script
