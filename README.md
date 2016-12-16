@@ -4,8 +4,9 @@ Node server pages using FastCGI (with &lt;?nsp ... ?&gt; tags in HTML files)
 ## Installation
 
 1. Download nsp.js and config.json and place them in a directory
-2. Change config.json scriptRoot points to your html root directory
-3. Configure your web server to pass .nsp files to FastCGI on port 9000. On Nginx, for example, place this inside the server section of nginx.conf:
+2. Install node-fastcgi and strip-json-comments using npm
+3. Change config.json scriptRoot points to your html root directory
+4. Configure your web server to pass .nsp files to FastCGI on port 9000. On Nginx, for example, place this inside the server section of nginx.conf:
 
    ```
    location ~ \.nsp$ {
@@ -18,7 +19,7 @@ Node server pages using FastCGI (with &lt;?nsp ... ?&gt; tags in HTML files)
    }
    ```
 
-4. Start both nginx and nsp.js
+5. Start both nginx and nsp.js
 
 ## Example
 
