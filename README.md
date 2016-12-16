@@ -35,8 +35,6 @@ Save this file as example.nsp:
   <h1>NSP test</h1>
   <code>
 <?
-```
-```javascript
 var querystring = require('querystring');
 
 res.write('Hello, world!<br/>');
@@ -51,8 +49,6 @@ if (get['message']) {
 } else {
   res.write('<form>Send me a message: <input type="text" name="message"></input> <button type="submit">Send!</button></form>');
 }
-```
-```html
 ?>
   </code>
 </body>
