@@ -1,0 +1,17 @@
+{ // npm.js config
+"port": 9000,					// FastCGI port number
+"scriptRoot": "../html",		// Relative or absolute path, no trailing slash
+"printErrors": true, 			// Print errors on the page
+"printErrorsToConsole": false,	// Print errors in the console
+"scriptTimeout": 30000, 		// Ends script with an error after this time. Set to -1 to disable. setTimeout can escape this, though: https://github.com/nodejs/node/issues/3020
+"printPartial": true, 			// Not yet implemented (always true). If an error occurs, print all html up to that error. This might make errors harder to see so it"s better to leave this off.
+"openTags": ["<?nsp", "<?"], 	// <?nsp needs to go first since nsp starts with <?
+"closeTags": ["?>"],
+"autoCloseLastTag": false, 		// Allow a file to end while inside a script
+"ignoredOpenTokens": ["\"", "'", "`", "//", "/*"], 							// Ignore tags that occur within comments and strings inside scripts
+"ignoredCloseTokens": [["\"", "\n"], ["'", "\n"], ["`"], ["\n"], ["*/"]],	// Closing tokens for those comments and strings
+"scriptEncoding": "utf-8",		// The whole file will have to be of this encoding.
+"precompileScripts": false,		// Not yet implemented. This option will make the server keep a mapping between the script"s hash and a precompiled script
+"ctrlCScripts": true,			// Use Ctrl-C to end the first script that started rather than ending the server
+"debug": true					// Print time taken to run a script to the console
+}
