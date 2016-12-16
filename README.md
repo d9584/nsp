@@ -26,6 +26,10 @@ Node server pages using FastCGI (with &lt;?nsp ... ?&gt; tags in HTML files)
 Save this file as example.nsp: 
 ```html
 <!DOCTYPE html>
+<?nsp
+var querystring = require('querystring');
+var get = querystring.parse(req.url.split('?')[1]);
+?>
 <html>
 
 <head>
@@ -39,23 +43,25 @@ Save this file as example.nsp:
 <body>
   <h1>NSP test</h1>
   <code>
-<?
-var querystring = require('querystring');
-
-res.write('Hello, world!<br/>');
+<?nsp
+res.write('Hello, ' + req.connection.remoteAddress + '!<br/>');
 for (var i = 1; i <= 10; i++) { // Print numbers 1 to 10
-  res.write(i + '<br/>')
-}
-
-var get = querystring.parse(req.url.split('?')[1]);
-if (get['message']) {
-  res.write('You sent this message: ' + get['message'] + '<br/>');
-  res.write('<form><button type="submit">Reset</button></form>')
-} else {
-  res.write('<form>Send me a message: <input type="text" name="message"></input> <button type="submit">Send!</button></form>');
+  res.write(i + (i == 10 ? '' : ', '))
 }
 ?>
   </code>
+  <form>
+<?nsp
+var fs = require('fs');
+if (get['message']) {
+  res.write('You sent this message: ' + get['message'] + '! Click <a href="messages.txt">here</a> to see all messages!<br/>');
+  res.write('<button type="submit">Reset</button>');
+  fs.appendFile('../html/messages.txt', get['message'] + '\n', function() {});
+} else {
+  res.write('Send me a message: <input type="text" name="message"></input> <button type="submit">Send!</button>');
+}
+?>
+  </form>
 </body>
 
 </html>
