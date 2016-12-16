@@ -10,10 +10,30 @@ fcgi.createServer(function(req, res) {
   var startTime = new Date().getTime();
   var scriptPath = config.scriptRoot + req.url;
   var result = "";
-  function error(msg) { if(config.printErrors) { res.end(msg); } else { res.end(); } if(config.printErrorsToConsole) { console.error(msg) } };
+  var errorOccured = false;
+  
+  function error(msg, canContinue) {
+    if(config.printErrorsToConsole || (config.debug && !canContinue)) {
+      console.error(msg)
+    }
+    errorOccured = true;
+    if(config.printErrors) {
+      if(config.htmlErrors) {
+        msg = '<pre class="nsp-error">' + msg + '</pre>';
+      }
+      if (config.printRemainingOnError && canContinue) {
+        res.write(msg);
+      } else {
+        res.end(msg);
+      }
+    } else if(config.printRemainingOnError && canContinue) {
+      res.end();
+    }
+  }
+  
   fs.readFile(scriptPath, config.scriptEncoding, (err, data) => {
     if (err) {
-      error("An error occured while reading file " + scriptPath + ": " + err.message);
+      error("An error occured while reading file " + scriptPath + ": " + err.message, false);
       return;
     }
     
@@ -32,9 +52,9 @@ fcgi.createServer(function(req, res) {
         timeLeft = config.scriptTimeout - (new Date().getTime() - startTime);
       } catch (err) {
         if (timeLeft <= 0) {
-          error('Script timeout reached');
+          error('Script timeout reached', false);
         } else {
-          error(err.toString());
+          error(err.stack.split("at realRunInContextScript")[0], true);
         }
       }
     }
@@ -68,7 +88,7 @@ fcgi.createServer(function(req, res) {
           fromLine = lineNumber;
           inScript = true;
         } else if (ti = isStr(data, pos, config.closeTags)) {
-          error("Unmatched close tag on line " + lineNumber);
+          error("Unmatched close tag on line " + lineNumber, false);
           return;
         }
       } else if (inScript && !inIgnored) { // inside a script
@@ -81,13 +101,15 @@ fcgi.createServer(function(req, res) {
           ignoreCloseToken = [];
           
           // evaluate the script
-          evaluate(code, lineNumber - 1);
-          if (res.finished) {
-            if (config.debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
-            return;
+          if (!errorOccured) {
+            evaluate(code, fromLine - 1);
+            if (res.finished) {
+              if (config.debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
+              return;
+            }
           }
         } else if (isStr(data, pos, config.openTags)) {
-          error("Unmatched open tag on line " + fromLine + " (tried to open another on line " + lineNumber + ")");
+          error("Unmatched open tag on line " + fromLine + " (tried to open another on line " + lineNumber + ")", false);
           return;
         } else if (ti = isStr(data, pos, config.ignoredOpenTokens)) {
           inIgnored = true;
@@ -99,7 +121,7 @@ fcgi.createServer(function(req, res) {
       }
     }
     if (inScript) {
-      error("Tag on line " + fromLine + " not closed before end of file (and autoCloseLastTag = false)");
+      error("Tag on line " + fromLine + " not closed before end of file (and autoCloseLastTag = false)", false);
       return;
     }
     if(fromPos < pos) {
