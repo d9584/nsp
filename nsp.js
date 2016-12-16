@@ -1,4 +1,3 @@
-// nsp.js (run node through FastCGI)
 // Requires the node-fastcgi module (https://www.npmjs.com/package/node-fastcgi)
 var port = 9000; // FastCGI port number
 var scriptRoot = '../html'; // Relative or absolute path, no trailing slash
@@ -52,14 +51,6 @@ fcgi.createServer(function(req, res) {
           error(err.toString());
         }
       }
-    }
-
-    if(req.url.endsWith(".nsp")) {
-        evaluate(data, 0);
-        if (!res.finished) {
-          res.end();
-        }
-        return;
     }
     
     function isStr(data, pos, strList) { // returns 1-based index
