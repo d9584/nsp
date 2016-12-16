@@ -1,4 +1,4 @@
-{ // npm.js config
+{ // nsp.js config
 "port": 9000,					// FastCGI port number
 "scriptRoot": "../html",		// Relative or absolute path, no trailing slash
 "printErrors": true, 			// Print errors on the page

@@ -1,4 +1,3 @@
-// Requires the node-fastcgi and strip-json-comments modules
 var fcgi = require("node-fastcgi");
 var fs = require("fs");
 var vm = require("vm");
@@ -40,7 +39,7 @@ fcgi.createServer(function(req, res) {
     
     var context = {"clearImmediate": clearImmediate, "clearInterval": clearInterval, "clearTimeout": clearTimeout,
     "require": require, "setImmediate": setImmediate, "setInterval": setInterval, "setTimeout": setTimeout,
-    "req": req, "res": res, "console": console}; // TODO: globals
+    "req": req, "res": res, "console": console}; // TODO: globals, path
     vm.createContext(context);
     function evaluate(code, offset) {
       try {
@@ -84,8 +83,8 @@ fcgi.createServer(function(req, res) {
       if (!inScript) { // outside of a script
         if (ti = isStr(data, pos, config.openTags)) {
           res.write(data.slice(fromPos, pos));
-          pos += config.openTags[ti - 1].length; // skip over the tag
-          fromPos = pos;
+          pos += config.openTags[ti - 1].length - 1; // skip over the tag
+          fromPos = pos + 1;
           fromLine = lineNumber;
           inScript = true;
         } else if (ti = isStr(data, pos, config.closeTags)) {
@@ -95,8 +94,8 @@ fcgi.createServer(function(req, res) {
       } else if (inScript && !inIgnored) { // inside a script
         if (ti = isStr(data, pos, config.closeTags) || (config.autoCloseLastTag && pos == str.length)) {
           code = data.slice(fromPos, pos);
-          pos += config.closeTags[ti - 1].length;
-          fromPos = pos;
+          pos += config.closeTags[ti - 1].length - 1;
+          fromPos = pos + 1;
           inScript = false;
           inIgnored = false;
           ignoreCloseToken = [];
@@ -124,7 +123,7 @@ fcgi.createServer(function(req, res) {
       }
     }
     if (inScript) {
-      error("Tag on line " + fromLine + " not closed before end of file (and autoCloseLastTag = false)", false);
+      error("Tag on line " + fromLine + " not closed before end of file (and autoCloseLastTag is disabled)", false);
       return;
     }
     if(fromPos < pos) {
