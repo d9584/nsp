@@ -31,27 +31,27 @@ fcgi.createServer(function(req, res) {
       error("An error occured while reading file " + scriptPath + ": " + err.message);
       return;
     }
-	
+    
     var context = {'clearImmediate': clearImmediate, 'clearInterval': clearInterval, 'clearTimeout': clearTimeout,
-	'require': require, 'setImmediate': setImmediate, 'setInterval': setInterval, 'setTimeout': setTimeout,
-	'req': req, 'res': res, 'console': console}; // TODO: globals
-	vm.createContext(context);
+    'require': require, 'setImmediate': setImmediate, 'setInterval': setInterval, 'setTimeout': setTimeout,
+    'req': req, 'res': res, 'console': console}; // TODO: globals
+    vm.createContext(context);
     function evaluate(code, offset) {
-	  try {
-	    var timeLeft = scriptTimeout - (new Date().getTime() - startTime);
+      try {
+        var timeLeft = scriptTimeout - (new Date().getTime() - startTime);
         if(scriptTimeout == -1) {
-	      vm.runInContext(code, context, {filename: req.url, breakOnSigint: ctrlCScripts, lineOffset: offset});
+          vm.runInContext(code, context, {filename: req.url, breakOnSigint: ctrlCScripts, lineOffset: offset});
         } else if (timeLeft > 0) {
-	      vm.runInContext(code, context, {filename: req.url, breakOnSigint: ctrlCScripts, lineOffset: offset, timeout: timeLeft});
-	    }
-	    timeLeft = scriptTimeout - (new Date().getTime() - startTime);
-	  } catch (err) {
-	    if (timeLeft <= 0) {
-		  error('Script timeout reached');
-	    } else {
-		  error(err.toString());
-		}
-	  }
+          vm.runInContext(code, context, {filename: req.url, breakOnSigint: ctrlCScripts, lineOffset: offset, timeout: timeLeft});
+        }
+        timeLeft = scriptTimeout - (new Date().getTime() - startTime);
+      } catch (err) {
+        if (timeLeft <= 0) {
+          error('Script timeout reached');
+        } else {
+          error(err.toString());
+        }
+      }
     }
 
     if(req.url.endsWith(".nsp")) {
@@ -63,22 +63,22 @@ fcgi.createServer(function(req, res) {
     }
     
     function isStr(data, pos, strList) { // returns 1-based index
-	  for (var i = 1; i <= strList.length; i++) {
-		var str = strList[i - 1];
-		if (data.length - pos >= str.length && data.slice(pos, pos + str.length) == str) {
-		  return i;
-		}
-	  }
-	  return 0;
-	}
-	
+      for (var i = 1; i <= strList.length; i++) {
+        var str = strList[i - 1];
+        if (data.length - pos >= str.length && data.slice(pos, pos + str.length) == str) {
+          return i;
+        }
+      }
+      return 0;
+    }
+    
     var inScript = false;
     var inIgnored = false; // inside a comment or a string
-	var ignoreCloseToken = [];
+    var ignoreCloseToken = [];
     var fromPos = 0;
     var lineNumber = 1;
     var fromLine = 0;
-	var ti = 0;
+    var ti = 0;
     for (var pos = 0; pos <= data.length; pos++) {
       if (data.charAt(pos) == '\n') {
           lineNumber++;
@@ -101,7 +101,7 @@ fcgi.createServer(function(req, res) {
           fromPos = pos;
           inScript = false;
           inIgnored = false;
-		  ignoreCloseToken = [];
+          ignoreCloseToken = [];
           
           // evaluate the script
           evaluate(code, lineNumber - 1);
@@ -113,13 +113,13 @@ fcgi.createServer(function(req, res) {
           error("Unmatched open tag on line " + fromLine + " (tried to open another on line " + lineNumber + ")");
           return;
         } else if (ti = isStr(data, pos, ignoredOpenTokens)) {
-		  inIgnored = true;
-		  ignoreCloseToken = ignoredCloseTokens[ti - 1];
-		  console.log(ignoreCloseToken);
+          inIgnored = true;
+          ignoreCloseToken = ignoredCloseTokens[ti - 1];
+          console.log(ignoreCloseToken);
         }
       } else if (inScript && inIgnored && isStr(data, pos, ignoreCloseToken)) {
         inIgnored = false;
-		ignoreCloseToken = [];
+        ignoreCloseToken = [];
       }
     }
     if (inScript) {
@@ -130,9 +130,9 @@ fcgi.createServer(function(req, res) {
       res.write(data.slice(fromPos, pos));
     }
     
-	if(!res.finished) {
+    if(!res.finished) {
       res.end();
-	}
+    }
     if (debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
   });
 }).listen(port);
