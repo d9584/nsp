@@ -107,6 +107,8 @@ fcgi.createServer(function(req, res) {
               if (config.debug) { var time = new Date().getTime() - startTime; console.log("Took " + time + "ms for " + req.url); }
               return;
             }
+          } else if (config.errorOnScriptSkipped) {
+            error("Skipping script on line " + fromLine, true);
           }
         } else if (isStr(data, pos, config.openTags)) {
           error("Unmatched open tag on line " + fromLine + " (tried to open another on line " + lineNumber + ")", false);
