@@ -14,7 +14,7 @@ fcgi.createServer(function(req, res) {
   
   function error(msg, canContinue) {
     if(config.printErrorsToConsole || (config.debug && !canContinue)) {
-      console.error(msg)
+      console.error(msg);
     }
     errorOccured = true;
     if(config.printErrors) {
@@ -72,6 +72,7 @@ fcgi.createServer(function(req, res) {
     var inScript = false;
     var inIgnored = false; // inside a comment or a string
     var ignoreCloseToken = [];
+    var ignoredCloseEscapable = false;
     var fromPos = 0;
     var lineNumber = 1;
     var fromLine = 0;
@@ -116,8 +117,11 @@ fcgi.createServer(function(req, res) {
         } else if (ti = isStr(data, pos, config.ignoredOpenTokens)) {
           inIgnored = true;
           ignoreCloseToken = config.ignoredCloseTokens[ti - 1];
+          ignoredCloseEscapable = config.ignoredCloseEscapable[ti - 1];
         }
-      } else if (inScript && inIgnored && isStr(data, pos, ignoreCloseToken)) {
+      } else if (inScript && inIgnored) {
+        if (ignoredCloseEscapable && data.charAt(pos - 1) == "\\") continue;
+        if (ignoredCloseEscapable && data.charAt(pos - 1) == "\r" && data.charAt(pos - 2) == "\\") continue; // skips crlf
         inIgnored = false;
         ignoreCloseToken = [];
       }
